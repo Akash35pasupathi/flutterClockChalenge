@@ -4,6 +4,8 @@
 // found in the FONT_LICENSE file.
 // found in the ICON_LICENSE file.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -57,14 +59,11 @@ class DigitalClock extends StatefulWidget {
 
 class _DigitalClockState extends State<DigitalClock> {
   DateTime _dateTime = DateTime.now();
+  Timer _timer;
 
   var _temperature = '';
   var _condition = '';
   var _location = '';
-  var _amPmMarker = '';
-  var _date = '';
-  var _hour = '';
-  var _minute = '';
   var _widgetPadding = 10.0;
 
   static const _sunday = 'Sun';
@@ -85,14 +84,15 @@ class _DigitalClockState extends State<DigitalClock> {
 
   @override
   void initState() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     super.initState();
     widget.model.addListener(_updateModel);
     _updateTime();
     _updateModel();
+
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
   }
 
   @override
@@ -106,6 +106,7 @@ class _DigitalClockState extends State<DigitalClock> {
 
   @override
   void dispose() {
+    _timer?.cancel();
     widget.model.removeListener(_updateModel);
     widget.model.dispose();
     super.dispose();
@@ -116,17 +117,19 @@ class _DigitalClockState extends State<DigitalClock> {
       _temperature = widget.model.temperatureString;
       _condition = widget.model.weatherString;
       _location = widget.model.location;
-      _amPmMarker = DateFormat('a').format(_dateTime);
-      _date = DateFormat('dd MMM yyyy').format(_dateTime);
-      _hour = DateFormat(widget.model.is24HourFormat ? 'HH' : 'hh')
-          .format(_dateTime);
-      _minute = DateFormat('mm').format(_dateTime);
     });
   }
 
   void _updateTime() {
     setState(() {
       _dateTime = DateTime.now();
+
+      _timer = Timer(
+        Duration(minutes: 1) -
+            Duration(seconds: _dateTime.second) -
+            Duration(milliseconds: _dateTime.millisecond),
+        _updateTime,
+      );
     });
   }
 
@@ -135,6 +138,12 @@ class _DigitalClockState extends State<DigitalClock> {
     final colors = Theme.of(context).brightness == Brightness.light
         ? _lightTheme
         : _darkTheme;
+
+    final amPmMarker = DateFormat('a').format(_dateTime);
+    final date = DateFormat('dd MMM yyyy').format(_dateTime);
+    final hour =
+        DateFormat(widget.model.is24HourFormat ? 'HH' : 'hh').format(_dateTime);
+    final minute = DateFormat('mm').format(_dateTime);
 
     return AspectRatio(
         aspectRatio: 5 / 3,
@@ -152,7 +161,12 @@ class _DigitalClockState extends State<DigitalClock> {
                     children: <Widget>[
                       Expanded(
                         flex: 5,
-                        child: timeWidget(colors),
+                        child: timeWidget(
+                          hour,
+                          minute,
+                          amPmMarker,
+                          colors,
+                        ),
                       ),
                       Expanded(
                         flex: 1,
@@ -170,11 +184,16 @@ class _DigitalClockState extends State<DigitalClock> {
                     children: <Widget>[
                       Expanded(
                         flex: 2,
-                        child: weatherWidget(colors),
+                        child: weatherWidget(
+                          colors,
+                        ),
                       ),
                       Expanded(
                         flex: 4,
-                        child: dateWidget(colors),
+                        child: dateWidget(
+                          date,
+                          colors,
+                        ),
                       ),
                     ],
                   ),
@@ -185,7 +204,12 @@ class _DigitalClockState extends State<DigitalClock> {
         ));
   }
 
-  Widget timeWidget(Map<_ElementColor, Color> colors) {
+  Widget timeWidget(
+    hour,
+    minute,
+    amPmMarker,
+    Map<_ElementColor, Color> colors,
+  ) {
     return Container(
       padding: EdgeInsets.all(
         _widgetPadding,
@@ -198,7 +222,7 @@ class _DigitalClockState extends State<DigitalClock> {
             child: FittedBox(
               fit: BoxFit.contain,
               child: Text(
-                '$_hour:$_minute',
+                '$hour:$minute',
                 style: textFontStyle(
                   fontWeight: FontWeight.w600,
                   fontColor: colors[_ElementColor.timeTextColor],
@@ -213,7 +237,7 @@ class _DigitalClockState extends State<DigitalClock> {
               child: FittedBox(
                 fit: BoxFit.contain,
                 child: Text(
-                  _amPmMarker.toString(),
+                  amPmMarker.toString(),
                   style: textFontStyle(
                     fontWeight: FontWeight.w500,
                     fontColor: colors[_ElementColor.timeTextColor],
@@ -393,7 +417,7 @@ class _DigitalClockState extends State<DigitalClock> {
     );
   }
 
-  Widget dateWidget(colors) {
+  Widget dateWidget(date, colors) {
     return Container(
       color: colors[_ElementColor.dateWidgetBackgroundColor],
       padding: EdgeInsets.all(
@@ -402,7 +426,7 @@ class _DigitalClockState extends State<DigitalClock> {
       child: FittedBox(
         fit: BoxFit.contain,
         child: Text(
-          '$_date',
+          '$date',
           style: textFontStyle(
             fontWeight: FontWeight.w500,
             fontColor: colors[_ElementColor.dateTextColor],
