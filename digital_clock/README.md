@@ -3,7 +3,7 @@
 This app is an example of a digital clock.
 It has a light theme and a dark theme.
 
-<img src='pasupathiFlutterClock.mp4' width='350'>
+<img src='pasupathiFlutterClockChalenge.gif' width='350'>
 
 <img src='light1.png' width='350'>
 
